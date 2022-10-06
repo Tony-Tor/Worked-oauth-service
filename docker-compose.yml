@@ -1,0 +1,119 @@
+version: '3.3'
+networks:
+  net:
+    driver: bridge
+volumes:
+  postgres_data:
+    driver: local
+  postgres_data2:
+    driver: local
+
+services:
+  app-auth:
+    image: library_astu_auth:latest
+    container_name: oauth-app
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+    restart: unless-stopped
+    build: ./oauth2-server
+
+    environment:
+      spring.datasource.url: jdbc:postgresql://db-users:5432/users_db
+      spring.datasource.username: postgres
+      spring.datasource.password: password
+
+    ports:
+      - "9000:9000"
+    networks:
+      - net
+    depends_on:
+      - db-users
+  app-resource:
+    image: library_astu_resource:latest
+    container_name: resource-app
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+    restart: unless-stopped
+    build: ./resource-server
+
+    environment:
+      spring.datasource.url: jdbc:postgresql://db-resource:5432/resource_db
+      spring.datasource.username: postgres
+      spring.datasource.password: password
+
+    ports:
+      - "8088:8088"
+    networks:
+      - net
+    depends_on:
+      - db-resource
+  app-web:
+    image: library_astu_web:latest
+    container_name: web-app
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+    restart: unless-stopped
+    build: ./web-server
+    ports:
+      - "8080:8080"
+    networks:
+      - net
+    depends_on:
+      - app-resource
+      - app-auth
+  db-users:
+    image: postgres:12
+    container_name: users_postgres_db
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - net
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: users_db
+      PGDATA: /var/lib/postgresql/data/pgdata
+  db-resource:
+    image: postgres:12
+    container_name: resource_postgres_db
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+    restart: unless-stopped
+    volumes:
+      - postgres_data2:/var/lib/postgresql/data
+    networks:
+      - net
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: resource_db
+      PGDATA: /var/lib/postgresql/data2/pgdata
+    depends_on:
+      - db-users

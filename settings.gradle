@@ -1,0 +1,5 @@
+rootProject.name = 'library-astu'
+include 'default-authorizationserver'
+include 'messages-client'
+include 'messages-resource'
+
